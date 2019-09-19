@@ -81,7 +81,7 @@ func action(ctx *cli.Context) {
 	f, err := os.Stat(postspath)
 	if os.IsNotExist(err) {
 		log.Warnf("file path %s don't exists, _posts will be created", postspath)
-		os.MkdirAll(postspath, 0644)
+		Must(os.MkdirAll(postspath, 0644))
 	}
 
 	if f != nil && !f.IsDir() {

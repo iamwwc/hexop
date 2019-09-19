@@ -18,7 +18,7 @@ func TestGenerator(t *testing.T) {
 	cwd := Must2(os.Getwd()).(string)
 	fp := cwd + "/_posts/"
 	Must(os.MkdirAll(fp,0644))
-	defer Must(os.RemoveAll(fp))
+	//defer Must(os.RemoveAll(fp))
 	go generateFile(group, fp,"1234",m)
 	group.Wait()
 }
