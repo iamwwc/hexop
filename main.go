@@ -85,7 +85,7 @@ func action(ctx *cli.Context) {
 	}
 
 	f, err := os.Stat(postspath)
-	if !os.IsExist(err) {
+	if os.IsNotExist(err) {
 		log.Warnf("file path %s don't exists, _posts will be created", postspath)
 		os.MkdirAll(postspath,0644)
 	}
@@ -95,20 +95,22 @@ func action(ctx *cli.Context) {
 	}
 
 	groups := sync.WaitGroup{}
-	groups.Add(len(issues))
+	length := len(issues)
+	groups.Add(length)
 	rand.Seed(time.Now().Unix())
 	for _, issue := range issues {
 		random := make([]rune,6)
 		for count := 6; count > 0 ; count -- {
 			random[count -1] = letters[rand.Intn(len(letters))]
 		}
-		go generateFile(groups, postspath, string(random), issue)
+		go generateFile(&groups, postspath, string(random), issue)
 	}
 	groups.Wait()
 }
 
 // 创建文件时添加上随机数，避免冲突。
-func generateFile(waitGroup sync.WaitGroup, fp string, random string, issue map[string]interface{}) {
+func generateFile(waitGroup *sync.WaitGroup, fp string, random string, issue map[string]interface{}) {
+	defer waitGroup.Done()
 	labels := issue["labels"].([]interface{})
 	tags := make([]string,0)
 
@@ -135,7 +137,6 @@ func generateFile(waitGroup sync.WaitGroup, fp string, random string, issue map[
 	if _, err := f.WriteString(buffer.String()); err != nil {
 		log.Error(err)
 	}
-	waitGroup.Done()
 }
 
 func apirequest(path string) [] byte{
