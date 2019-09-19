@@ -117,9 +117,18 @@ func generateFile(waitGroup *sync.WaitGroup, fp string, random string, issue map
 	body := issue["body"].(string)
 	date := issue["created_at"].(string)
 	date = strings.Split(date, "T")[0]
+
+	updateBy := issue["updated_at"].(string)
+	updateBy = strings.Split(updateBy, "T")[0]
+	url := issue["url"].(string)
+	part := strings.Split(url, "/")
+	issueId := part[len(part) - 1]
 	generator := NewYamlGenerator()
 	pageHeader := generator.WithKV("title", title).
-		WithKV("date", date).WithArray("tags", tags).Done()
+		WithKV("date", date).
+		WithKV("updated",updateBy).
+		WithKV("issueid",issueId).
+		WithArray("tags", tags).Done()
 
 	buffer := bytes.Buffer{}
 	buffer.WriteString("---\n")
