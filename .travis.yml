@@ -1,0 +1,30 @@
+language: go
+
+go:
+  - 1.12
+env:
+  - GO111MODULE=on
+script:
+  - go build .
+
+# build not trigger when I tag a commit, push it to branch
+# remove branch.only
+# https://stackoverflow.com/questions/30156581/travis-ci-skipping-deployment-although-commit-is-tagged
+
+notifications:
+  email:
+    on_success: never
+    on_failure: always
+
+before_deploy:
+  - git config --local user.name "${GIT_USER_NAME}"
+  - git config --local user.email "${GIT_USER_EMAIL}"
+  - git tag
+
+deploy:
+  provider: releases
+  api_key: $GITHUB_TOKEN
+  file: "hexop"
+  skip_cleanup: true
+  on:
+    tags: true
