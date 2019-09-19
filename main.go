@@ -24,14 +24,14 @@ const (
 )
 
 var (
-	letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	letters   = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	linebreak = ""
 )
 
 func init() {
 	if runtime.GOOS == "windows" {
 		linebreak = "\r\n"
-	}else {
+	} else {
 		linebreak = "\n"
 	}
 }
@@ -45,10 +45,10 @@ func main() {
 	}
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:        "repourl",
-			Usage:       "posts url",
-			Required:    true,
-			Hidden:      false,
+			Name:     "repourl",
+			Usage:    "posts url",
+			Required: true,
+			Hidden:   false,
 		},
 	}
 	app.Action = action
@@ -60,16 +60,10 @@ func main() {
 func action(ctx *cli.Context) {
 	url := ctx.String("repourl")
 	owner, repo := parseRepo(url)
-	envs := os.Environ()
-	token := ""
-	for _, v := range envs{
-		if strings.Index(v, "GITHUB_TOKEN") == 0 {
-			token = strings.Split(v,"=")[1]
-			break
-		}
-	}
 
-	p := fmt.Sprintf("%s/repos/%s/%s/issues?state=open&creator=%s&access_token=%s",githubApiPath, owner,repo,owner, token)
+	token := parseTokenFromEnv()
+
+	p := fmt.Sprintf("%s/repos/%s/%s/issues?state=open&creator=%s&access_token=%s", githubApiPath, owner, repo, owner, token)
 	b := apirequest(p)
 	if b == nil {
 		return
@@ -78,7 +72,7 @@ func action(ctx *cli.Context) {
 	if err := json.Unmarshal(b, &issues); err != nil {
 		log.Error(err)
 	}
-	currPath, err  := os.Getwd()
+	currPath, err := os.Getwd()
 	postspath := filepath.Join(currPath, "source/_posts")
 	if err != nil {
 		log.Error(postspath)
@@ -87,10 +81,10 @@ func action(ctx *cli.Context) {
 	f, err := os.Stat(postspath)
 	if os.IsNotExist(err) {
 		log.Warnf("file path %s don't exists, _posts will be created", postspath)
-		os.MkdirAll(postspath,0644)
+		os.MkdirAll(postspath, 0644)
 	}
 
-	if f != nil && !f.IsDir(){
+	if f != nil && !f.IsDir() {
 		log.Errorf("%s is not a folder", postspath)
 	}
 
@@ -99,9 +93,9 @@ func action(ctx *cli.Context) {
 	groups.Add(length)
 	rand.Seed(time.Now().Unix())
 	for _, issue := range issues {
-		random := make([]rune,6)
-		for count := 6; count > 0 ; count -- {
-			random[count -1] = letters[rand.Intn(len(letters))]
+		random := make([]rune, 6)
+		for count := 6; count > 0; count-- {
+			random[count-1] = letters[rand.Intn(len(letters))]
 		}
 		go generateFile(&groups, postspath, string(random), issue)
 	}
@@ -112,7 +106,7 @@ func action(ctx *cli.Context) {
 func generateFile(waitGroup *sync.WaitGroup, fp string, random string, issue map[string]interface{}) {
 	defer waitGroup.Done()
 	labels := issue["labels"].([]interface{})
-	tags := make([]string,0)
+	tags := make([]string, 0)
 
 	for _, l := range labels {
 		v := l.(map[string]interface{})["name"].(string)
@@ -121,15 +115,18 @@ func generateFile(waitGroup *sync.WaitGroup, fp string, random string, issue map
 
 	title := issue["title"].(string)
 	body := issue["body"].(string)
+	date := issue["created_at"].(string)
+	date = strings.Split(date, "T")[0]
 	generator := NewYamlGenerator()
-	pageHeader := generator.WithKV("title",title).WithArray("tags",tags).Done()
+	pageHeader := generator.WithKV("title", title).
+		WithKV("date", date).WithArray("tags", tags).Done()
 
 	buffer := bytes.Buffer{}
-	buffer.WriteString("---\n");
+	buffer.WriteString("---\n")
 	buffer.WriteString(pageHeader)
-	buffer.WriteString("---\n");
+	buffer.WriteString("---\n")
 	buffer.WriteString(body)
-	f, err := os.OpenFile(filepath.Join(fp,title + random + ".md"), os.O_CREATE | os.O_WRONLY | os.O_TRUNC,0644)
+	f, err := os.OpenFile(filepath.Join(fp, title+random+".md"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	defer f.Close()
 	if err != nil {
 		log.Error(err)
@@ -139,14 +136,14 @@ func generateFile(waitGroup *sync.WaitGroup, fp string, random string, issue map
 	}
 }
 
-func apirequest(path string) [] byte{
+func apirequest(path string) []byte {
 	resp, err := http.Get(path)
 	if err != nil {
 		log.Error(err)
 	}
 	bs, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Errorf("Read from response failed, error: %v",err)
+		log.Errorf("Read from response failed, error: %v", err)
 		return nil
 	}
 	return bs
@@ -156,4 +153,27 @@ func parseRepo(url string) (string, string) {
 	re := regexp.MustCompile(repoUrlRegexp)
 	result := re.FindStringSubmatch(url)
 	return result[1], result[2]
+}
+
+func parseTokenFromEnv() (token string) {
+	envs := os.Environ()
+	token = ""
+	for _, v := range envs {
+		if strings.Index(v, "GITHUB_TOKEN") == 0 {
+			token = strings.Split(v, "=")[1]
+			break
+		}
+	}
+	return
+}
+
+func Must2(v interface{}, err error) interface{} {
+	Must(err)
+	return v
+}
+
+func Must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

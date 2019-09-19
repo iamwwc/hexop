@@ -32,7 +32,7 @@ func (y *yamlGenerator) Done() string{
 		case []string:
 			builder.WriteString(fmt.Sprintf("%s:\n",k))
 			for _, a := range value {
-				builder.WriteString(fmt.Sprintf("\t- %s: \n",a))
+				builder.WriteString(fmt.Sprintf("\t- %s\n",a))
 			}
 		default:
 			panic(fmt.Sprintf("Unknown type of %T",value))
