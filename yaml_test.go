@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -18,4 +19,9 @@ func TestYamlGenerator_Done(t *testing.T) {
 				WithArray("tags",[]string{"t1","t2","t3"}).
 				Done()
 	fmt.Printf(result)
+}
+
+func TestIndex(t *testing.T) {
+	s := "GITHUB_TOKEN=9ace205cbd67dbee0cf29cccfd26d625a03bdd4b"
+	strings.Index(s,"GITHUB_TOKEN")
 }

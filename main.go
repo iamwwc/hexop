@@ -63,12 +63,13 @@ func action(ctx *cli.Context) {
 	envs := os.Environ()
 	token := ""
 	for _, v := range envs{
-		if strings.Index("GITHUB_TOKEN",v) == 0 {
+		if strings.Index(v, "GITHUB_TOKEN") == 0 {
 			token = strings.Split(v,"=")[1]
+			break
 		}
 	}
 
-	p := fmt.Sprintf("%s/repos/%s/%s/issues?state=open&creator=%s&access_token=",githubApiPath, owner,repo,owner, token)
+	p := fmt.Sprintf("%s/repos/%s/%s/issues?state=open&creator=%s&access_token=%s",githubApiPath, owner,repo,owner, token)
 	b := apirequest(p)
 	if b == nil {
 		return
