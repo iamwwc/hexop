@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -59,7 +60,15 @@ func main() {
 func action(ctx *cli.Context) {
 	url := ctx.String("repourl")
 	owner, repo := parseRepo(url)
-	p := fmt.Sprintf("%s/repos/%s/%s/issues?state=open&creator=%s",githubApiPath, owner,repo,owner)
+	envs := os.Environ()
+	token := ""
+	for _, v := range envs{
+		if strings.Index("GITHUB_TOKEN",v) == 0 {
+			token = strings.Split(v,"=")[1]
+		}
+	}
+
+	p := fmt.Sprintf("%s/repos/%s/%s/issues?state=open&creator=%s&access_token=",githubApiPath, owner,repo,owner, token)
 	b := apirequest(p)
 	if b == nil {
 		return
@@ -69,7 +78,7 @@ func action(ctx *cli.Context) {
 		log.Error(err)
 	}
 	currPath, err  := os.Getwd()
-	postspath := filepath.Join(currPath, "_posts")
+	postspath := filepath.Join(currPath, "source/_posts")
 	if err != nil {
 		log.Error(postspath)
 	}
@@ -113,11 +122,11 @@ func generateFile(waitGroup sync.WaitGroup, fp string, random string, issue map[
 	pageHeader := generator.WithKV("title",title).WithArray("tags",tags).Done()
 
 	buffer := bytes.Buffer{}
-	buffer.WriteString("-------------------\n");
+	buffer.WriteString("---\n");
 	buffer.WriteString(pageHeader)
-	buffer.WriteString("-------------------\n");
+	buffer.WriteString("---\n");
 	buffer.WriteString(body)
-	f, err := os.OpenFile(filepath.Join(fp,title + random), os.O_CREATE | os.O_WRONLY | os.O_TRUNC,0644)
+	f, err := os.OpenFile(filepath.Join(fp,title + random + ".md"), os.O_CREATE | os.O_WRONLY | os.O_TRUNC,0644)
 	defer f.Close()
 	if err != nil {
 		log.Error(err)
