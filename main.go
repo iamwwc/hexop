@@ -50,6 +50,12 @@ func main() {
 			Required: true,
 			Hidden:   false,
 		},
+		cli.StringFlag{
+			Name:        "owner",
+			Usage:       "repo user name",
+			Required:    true,
+			Hidden:false,
+		},
 	}
 	app.Action = action
 	if err := app.Run(os.Args); err != nil {
@@ -59,11 +65,12 @@ func main() {
 
 func action(ctx *cli.Context) {
 	url := ctx.String("repourl")
-	owner, repo := parseRepo(url)
+	owner := ctx.String("owner")
+	repoOwnerName, repo := parseRepo(url)
 
 	token := parseTokenFromEnv()
 
-	p := fmt.Sprintf("%s/repos/%s/%s/issues?state=open&creator=%s&access_token=%s", githubApiPath, owner, repo, owner, token)
+	p := fmt.Sprintf("%s/repos/%s/%s/issues?state=open&creator=%s&access_token=%s", githubApiPath, repoOwnerName, repo, owner, token)
 	b := apirequest(p)
 	if b == nil {
 		return
@@ -158,10 +165,10 @@ func apirequest(path string) []byte {
 	return bs
 }
 
-func parseRepo(url string) (string, string) {
+func parseRepo(url string) (string,string) {
 	re := regexp.MustCompile(repoUrlRegexp)
 	result := re.FindStringSubmatch(url)
-	return result[1], result[2]
+	return result[1],result[2]
 }
 
 func parseTokenFromEnv() (token string) {
