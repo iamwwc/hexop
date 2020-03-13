@@ -142,7 +142,7 @@ func generateFile(waitGroup *sync.WaitGroup, fp string, random string, issue map
 	buffer.WriteString(pageHeader)
 	buffer.WriteString("---\n")
 	buffer.WriteString(body)
-	f, err := os.OpenFile(filepath.Join(fp, issueId +".md"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	f, err := os.OpenFile(filepath.Join(fp, issueId + "-" + title +".md"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	defer f.Close()
 	if err != nil {
 		log.Error(err)
