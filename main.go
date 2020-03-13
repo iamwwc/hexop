@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +22,7 @@ import (
 const (
 	repoUrlRegexp = "^https://github\\.com/(.+)/(.+)"
 	githubApiPath = "https://api.github.com"
+	linkRegexp = "<(.+?)>"
 )
 
 var (
@@ -70,11 +72,54 @@ func action(ctx *cli.Context) {
 
 	token := parseTokenFromEnv()
 
-	p := fmt.Sprintf("%s/repos/%s/%s/issues?state=open&creator=%s&access_token=%s", githubApiPath, repoOwnerName, repo, owner, token)
-	b := apirequest(p)
+	i := &info{
+		url,owner,repo, repoOwnerName,token,1,
+	}
+	iterator(i)
+}
+
+type info struct {
+	url string
+	owner string
+	repo string
+	repoOwnerName string
+	token string
+	currPage int
+}
+
+func getAPIPath(repoOwnerName string, repo string, owner string, token string, page int) string {
+	return fmt.Sprintf("%s/repos/%s/%s/issues?state=open&creator=%s&access_token=%s&page=%d", githubApiPath, repoOwnerName, repo, owner, token,page)
+}
+
+func(i *info) apiWithPage() string{
+	return getAPIPath(i.repoOwnerName,i.repo,i.owner,i.token,i.currPage)
+}
+
+func iterator(i *info) {
+	b,header := apirequest(i.apiWithPage())
 	if b == nil {
 		return
 	}
+	if link, ok := header["Link"] ; ok{
+		r, err := regexp.Compile(linkRegexp)
+		if err!= nil {
+			panic(err)
+		}
+		result := r.FindAllStringSubmatch(link[0],-1)
+		next, last := result[0], result[1];
+		_ = last
+		pageNum := regexp.MustCompile("page=(\\d+)").FindStringSubmatch(next[1])[1]
+		num := Must2(strconv.Atoi(pageNum)).(int)
+		process(b)
+		if num < i.currPage {
+			return
+		}
+		i.currPage = num
+		iterator(i)
+	}
+}
+
+func process(b []byte) {
 	var issues []map[string]interface{}
 	if err := json.Unmarshal(b, &issues); err != nil {
 		log.Error(err)
@@ -152,7 +197,7 @@ func generateFile(waitGroup *sync.WaitGroup, fp string, random string, issue map
 	}
 }
 
-func apirequest(path string) []byte {
+func apirequest(path string) ([]byte,http.Header){
 	resp, err := http.Get(path)
 	if err != nil {
 		log.Error(err)
@@ -160,9 +205,9 @@ func apirequest(path string) []byte {
 	bs, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Errorf("Read from response failed, error: %v", err)
-		return nil
+		return nil,nil
 	}
-	return bs
+	return bs,resp.Header
 }
 
 func parseRepo(url string) (string,string) {
