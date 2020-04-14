@@ -88,7 +88,7 @@ type info struct {
 }
 
 func getAPIPath(repoOwnerName string, repo string, owner string, token string, page int) string {
-	return fmt.Sprintf("%s/repos/%s/%s/issues?state=open&creator=%s&access_token=%s&page=%d", githubApiPath, repoOwnerName, repo, owner, token,page)
+	return fmt.Sprintf("%s/repos/%s/%s/issues?state=open&creator=%s&page=%d", githubApiPath, repoOwnerName, repo, owner,page)
 }
 
 func(i *info) apiWithPage() string{
@@ -96,7 +96,7 @@ func(i *info) apiWithPage() string{
 }
 
 func iterator(i *info) {
-	b,header := apirequest(i.apiWithPage())
+	b,header := i.apirequest(i.apiWithPage())
 	if b == nil {
 		return
 	}
@@ -197,8 +197,21 @@ func generateFile(waitGroup *sync.WaitGroup, fp string, random string, issue map
 	}
 }
 
-func apirequest(path string) ([]byte,http.Header){
-	resp, err := http.Get(path)
+func (i* info)apirequest(path string) ([]byte,http.Header){
+	client := &http.Client{
+		Transport:     nil,
+		CheckRedirect: nil,
+		Jar:           nil,
+		Timeout:       0,
+	}
+	req, err := http.NewRequest("GET",path,bytes.NewBufferString(""))
+	if err != nil {
+	log.Error(err)
+	}
+	if i.token != "" {
+		req.Header.Add("Authorization","token "+ i.token)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Error(err)
 	}
